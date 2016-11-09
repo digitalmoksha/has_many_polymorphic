@@ -1,24 +1,56 @@
 $:.unshift(File.dirname(__FILE__) + '/../lib')
 plugin_test_dir = File.dirname(__FILE__)
 
-require 'rubygems'
-require 'bundler/setup'
-require 'rails'
-require 'active_support'
-require 'active_model'
-require 'active_record'
-require 'action_controller'
 require 'simplecov'
-require 'rspec/rails'
-
 SimpleCov.start
+
+require 'rails/all'
 
 require 'has_many_polymorphic'
 require 'support/models'
 
-ActiveRecord::Base.configurations = YAML::load(ERB.new(IO.read(plugin_test_dir + "/db/database.yml")).result)
-ActiveRecord::Base.establish_connection(ENV["DB"] || "spec")
+ActiveRecord::Base.configurations = YAML::load_file(plugin_test_dir + "/db/database.yml")
+ActiveRecord::Base.establish_connection(ENV["DB"] || :spec)
 ActiveRecord::Migration.verbose = false
 load(File.join(plugin_test_dir, "db", "schema.rb"))
 
 RussellEdge::HasManyPolymorphic::Engine.add_models("Zoo")
+
+module RSpecRails
+  class Application < ::Rails::Application
+    self.config.secret_key_base = 'ASecretString' if config.respond_to? :secret_key_base
+  end
+end
+I18n.enforce_available_locales = true if I18n.respond_to?(:enforce_available_locales)
+
+# require 'rspec/support/spec'
+require 'rspec/rails'
+# require 'ammeter/init'
+
+Dir["#{File.dirname(__FILE__)}/support/**/*.rb"].each {|f| require f}
+
+class RSpec::Core::ExampleGroup
+  def self.run_all(reporter=nil)
+    run(reporter || RSpec::Mocks::Mock.new('reporter').as_null_object)
+  end
+end
+
+RSpec.configure do |config|
+  # config.filter_run :focus
+  config.run_all_when_everything_filtered = true
+  config.order = :random
+  config.infer_spec_type_from_file_location!
+  config.use_transactional_fixtures = true
+
+  real_world = nil
+  config.before(:each) do
+    real_world = RSpec.world
+    RSpec.instance_variable_set(:@world, RSpec::Core::World.new)
+  end
+  config.after(:each) do
+    RSpec.instance_variable_set(:@world, real_world)
+  end
+end
+
+# SimpleCov.start
+

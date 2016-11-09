@@ -34,9 +34,7 @@ module RussellEdge #:nodoc:
       #  Example Usage
       #
       #  class PreferenceType < ActiveRecord::Base
-      #  	has_morpheus :preferenced_records,
-      #       :through => :valid_preference_types,
-      #       :models => [:desktops, :organizers]
+      #   has_many_polymorphic :preferenced_records, :through => :valid_preference_types, :models => [:desktops, :organizers]
       #  end
       #
       #  this gives you the following
@@ -70,8 +68,8 @@ module RussellEdge #:nodoc:
 
         #create the has_many relationship for each model
         options[:models].each do |model|
-          has_many model, :through => options[:through], :source => model.to_s.singularize,
-            :conditions => ["#{options[:through]}.#{name.to_s.singularize}_type = ?", model.to_s.classify], :dependent => :destroy
+          has_many model, -> { where(["#{options[:through]}.#{name.to_s.singularize}_type = ?", model.to_s.classify]) },
+            :through => options[:through], :source => model.to_s.singularize, :dependent => :destroy
         end
 
         #modify the through class to add the belongs to relationships
@@ -103,7 +101,7 @@ module RussellEdge #:nodoc:
             klass_name = (reln_record.class.superclass == ActiveRecord::Base) ? reln_record.class.name : reln_record.class.superclass.name
             conditions = "#{name.to_s.singularize}_id = #{reln_record.id} and #{name.to_s.singularize}_type = '#{klass_name}'"
             exisiting_record = record.send("#{options[:through]}").where(conditions).first
-				
+        
             if exisiting_record.nil?
               values_hash = {}
               values_hash["#{record.class.name.underscore}_id"] = record.id
@@ -114,21 +112,21 @@ module RussellEdge #:nodoc:
             end
           end
         end
-			
-	      #include instance methods into this model
+      
+        #include instance methods into this model
         include RussellEdge::HasManyPolymorphic::InstanceMethods
 
         #add the relationship to the models.
         options[:models].each do |model|
           model.to_s.classify.constantize.class_exec do
             has_many options[:through], :as => name.to_s.singularize, :dependent => :destroy
-            has_many target_class_name.tableize, :through => options[:through], :dependent => :destroy
+            has_many target_class_name.tableize.to_sym, :through => options[:through], :dependent => :destroy
           end
         end
 
       end
     end
-				
+        
     module InstanceMethods
       #clear array on reload
       def reload(*args)

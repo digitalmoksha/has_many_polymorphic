@@ -8,13 +8,13 @@ class Bear < ActiveRecord::Base
 end
 
 class ZooAnimal < ActiveRecord::Base
-	belongs_to :zoo
-	belongs_to :animal, :polymorphic => true
+  belongs_to :zoo
+  belongs_to :animal, :polymorphic => true
 end
 
 class Zoo < ActiveRecord::Base
-	has_many_polymorphic :animals,
-		:through => :zoo_animals,
-		:models => [:monkeys, :birds, :bears]
+  has_many_polymorphic :animals,
+    :through => :zoo_animals,
+    :models => [:monkeys, :birds, :bears]
 end
 
